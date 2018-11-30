@@ -1,6 +1,6 @@
-:christmas_tree: Advent Of Code bot for discord! :christmas_tree:
+# :christmas_tree: Advent Of Code bot for discord! :christmas_tree:
 
-This  is a bit for discord that can print your private leaderboard to discord. 
+This  is a bot for discord that can print your private leaderboard to discord. 
 
 ## Installation
 
