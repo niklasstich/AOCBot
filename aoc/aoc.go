@@ -19,6 +19,7 @@ type Member struct {
     Name string `json:"name"`
     LocalScore int `json:"local_score"`
     GlobalScore int `json:"global_score"`
+    Stars int `json:"stars"`
 }
 
 func FetchLeaderboard(config *resources.Data, year int) *Leaderboard {
