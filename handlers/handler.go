@@ -42,7 +42,7 @@ func top(config *resources.Data, year int, x int) []aoc.Member{
         memArr = append(memArr, v)
     }
     sort.Slice(memArr, func(i, j int) bool {
-        return memArr[i].LocalScore > memArr[j].LocalScore
+        return memArr[i].Stars > memArr[j].Stars
     })
     if x < len(memArr) {
         return memArr[:x]
@@ -57,12 +57,12 @@ func format(members []aoc.Member, year int) string {
     var buffer bytes.Buffer
     buffer.WriteString("Leaderboard (" + strYear + ") :\n================\n")
     for _, mem := range members {
-        score := strconv.Itoa(mem.LocalScore)
+        score := strconv.Itoa(mem.Stars)
         name := mem.Name
         if &name == nil || name == "" {
             name = "Anonymous"
         }
-        buffer.WriteString(name + " " + score + "\n")
+        buffer.WriteString(name + " || stars: " + score + "!\n")
     }
     return buffer.String()
 }
