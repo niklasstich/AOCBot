@@ -8,6 +8,7 @@ import (
     "../aoc"
     "../resources"
     "sort"
+    "time"
 )
 
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
@@ -20,7 +21,7 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
     } else if strings.HasPrefix(msgContent, "/aoc2017") {
         parse(session, message, 2017, parts)
     } else if strings.HasPrefix(msgContent, "/aoc") {
-        parse(session, message, 2018, parts)
+        parse(session, message, time.Now().Year(), parts)
     }
 }
 
@@ -55,14 +56,14 @@ func format(members []aoc.Member, year int) string {
     // return a list of members as string
     strYear := strconv.Itoa(year)
     var buffer bytes.Buffer
-    buffer.WriteString("Leaderboard (" + strYear + ") :\n================\n")
+    buffer.WriteString("Programmingcord Leaderboard (" + strYear + ") :\n================\nStars:\n")
     for _, mem := range members {
         score := strconv.Itoa(mem.Stars)
         name := mem.Name
         if &name == nil || name == "" {
             name = "Anonymous"
         }
-        buffer.WriteString(name + " || stars: " + score + "!\n")
+        buffer.WriteString(name + ": " + score + "!\n")
     }
     return buffer.String()
 }

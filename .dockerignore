@@ -1,0 +1,6 @@
+.git
+.idea
+.cache
+.gitignore
+readme.md
+resources/data.json

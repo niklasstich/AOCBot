@@ -1,13 +1,8 @@
 package resources
 
 import (
-    "io/ioutil"
-    "encoding/json"
+    "os"
 )
-
-
-// path relative to main
-const datapath = "../resources/data.json"
 
 // data for authentication + config (edit data.json to change)
 type Data struct {
@@ -20,10 +15,11 @@ type Data struct {
 // read the config file
 func Config() (*Data, error) {
     d := Data{}
-    bytes, err := ioutil.ReadFile(datapath)
-    if err != nil {
-        return &d, err
+    d.Channel = os.Getenv("LEADERBOARDID")
+    d.BotToken = os.Getenv("BOT_TOKEN")
+    d.SessionToken = os.Getenv("SESSION_TOKEN")
+    if d.Channel == "" || d.BotToken == "" || d.SessionToken == "" {
+        panic("check environment variables")
     }
-    json.Unmarshal(bytes, &d)
     return &d, nil
 }
