@@ -6,11 +6,10 @@ import (
 
 // data for authentication + config (edit data.json to change)
 type Data struct {
-    Channel string `json:"channel"`
-    BotToken string `json:"bot_token"`
+    Channel      string `json:"channel"`
+    BotToken     string `json:"bot_token"`
     SessionToken string `json:"session_token"`
 }
-
 
 // read the config file
 func Config() (*Data, error) {

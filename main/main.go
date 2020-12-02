@@ -1,14 +1,14 @@
 package main
 
 import (
+    "../handlers"
+    "../resources"
     "fmt"
     "github.com/bwmarrin/discordgo"
     "strings"
-    "../handlers"
-    "../resources"
 )
-    
-func main(){
+
+func main() {
     fmt.Println("starting bot")
     config, err := resources.Config()
     if err != nil {
@@ -23,7 +23,6 @@ func main(){
     <-lock
 }
 
-
 func discordSetup(token string) error {
     discord, err := discordgo.New("Bot " + strings.Trim(token, "\n"))
     if err != nil {
@@ -36,4 +35,3 @@ func discordSetup(token string) error {
     discord.AddHandler(handlers.CommandHandler)
     return nil
 }
-
