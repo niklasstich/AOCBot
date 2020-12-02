@@ -43,6 +43,9 @@ func top(config *resources.Data, year int, x int) []aoc.Member{
         memArr = append(memArr, v)
     }
     sort.Slice(memArr, func(i, j int) bool {
+        if memArr[i].Stars == memArr[j].Stars {
+            return memArr[i].LocalScore > memArr[j].LocalScore
+        }
         return memArr[i].Stars > memArr[j].Stars
     })
     if x < len(memArr) {
