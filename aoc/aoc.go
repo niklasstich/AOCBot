@@ -2,29 +2,31 @@
 package aoc
 
 import (
+    "../resources"
+    "encoding/json"
     "fmt"
     "net/http"
-    "encoding/json"
     "strconv"
-    "../resources"
     "time"
 )
 
 var (
-    lastHit time.Time
+    lastHit         time.Time
     lastLeaderboard Leaderboard
 )
+
 type Leaderboard struct {
-    OwnerId string `json:"owner_id"`
-    Event string `json:"event"`
+    OwnerId string            `json:"owner_id"`
+    Event   string            `json:"event"`
     Members map[string]Member `json:"members"`
 }
 
 type Member struct {
-    Name string `json:"name"`
-    LocalScore int `json:"local_score"`
-    GlobalScore int `json:"global_score"`
-    Stars int `json:"stars"`
+    Name               string                            `json:"name"`
+    LocalScore         int                               `json:"local_score"`
+    GlobalScore        int                               `json:"global_score"`
+    Stars              int                               `json:"stars"`
+    CompletionDayLevel map[string]map[string]interface{} `json:"completion_day_level"`
 }
 
 func FetchLeaderboard(config *resources.Data, year int) *Leaderboard {
@@ -39,7 +41,7 @@ func FetchLeaderboard(config *resources.Data, year int) *Leaderboard {
     if err != nil {
         panic(err)
     }
-    req.Header.Set("Cookie", "session=" + config.SessionToken)
+    req.Header.Set("Cookie", "session="+config.SessionToken)
     client := &http.Client{}
     response, e := client.Do(req)
     if e != nil {
