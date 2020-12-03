@@ -6,9 +6,11 @@ import (
     "bytes"
     "fmt"
     "github.com/bwmarrin/discordgo"
+    "io"
     "sort"
     "strconv"
     "strings"
+    "text/tabwriter"
     "time"
 )
 
@@ -55,30 +57,45 @@ func top(config *resources.Data, year int, x int) []aoc.Member {
     return memArr
 }
 
-func formatDays(daysFormat string, startDay int, endDay int) string {
+func formatDays(startDay int, endDay int) string {
     var out string
     for i := startDay; i <= endDay; i++ {
         dayN := strconv.Itoa(i)
-        out += fmt.Sprintf(daysFormat, " "+dayN)
+        out += " " + dayN + " "
     }
     return out
 }
 
-func formatMemberStars(mem *aoc.Member, starFormat string, startDay int, endDay int) string {
+func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
     var out string
     for i := startDay; i < endDay; i++ {
         dayKey := strconv.Itoa(i)
         if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
             if len(day) == 2 {
-                out += fmt.Sprintf(starFormat, "[*]")
+                out += "[*]"
             } else {
-                out += fmt.Sprintf(starFormat, "(*)")
+                out += "(*)"
             }
         } else {
-            out += fmt.Sprintf(starFormat, "")
+            out += "   "
         }
     }
     return out
+}
+
+func formatLeaderboard(members *[]aoc.Member, w io.Writer) {
+    const padding = 3
+    tw := tabwriter.NewWriter(w, 0, 0, padding, ' ', 0)
+    dayRanges := [][]int{{1, 14}, {15, 25}}
+    for _, days := range dayRanges {
+        startDay, endDay := days[0], days[1]
+        fmt.Fprintln(tw, "\t\t"+formatDays(startDay, endDay)+"\t") // header
+        for _, mem := range *members {
+            score := strconv.Itoa(mem.LocalScore)
+            fmt.Fprintln(tw, mem.Name+"\t#"+score+"\t"+formatMemberStars(mem, startDay, endDay)+"\t")
+        }
+    }
+    tw.Flush()
 }
 
 // format a list of members as string
@@ -86,51 +103,10 @@ func format(members []aoc.Member, year int) string {
     strYear := strconv.Itoa(year)
     var buffer bytes.Buffer
     buffer.WriteString(
-        "Programmingcord Leaderboard (" + strYear + ") :\n" +
+        "Programmingcord Leaderboard (" + strYear + "):\n" +
             "```css\n",
     )
-
-    nameScoreFormat := "%-10v%-4v"
-    starFormat := "%-3v"
-
-    firstHalf := fmt.Sprintf(
-        nameScoreFormat+
-            formatDays(starFormat, 1, 13)+
-            "\n",
-        "", "",
-    )
-    secondHalf := fmt.Sprintf(
-        nameScoreFormat+
-            formatDays(starFormat, 13, 25)+
-            "\n",
-        "", "",
-    )
-
-    for _, mem := range members {
-
-        score := strconv.Itoa(mem.Stars)
-        name := mem.Name
-
-        if &name == nil || name == "" {
-            name = "Anonymous"
-        }
-
-        firstHalf += fmt.Sprintf(
-            nameScoreFormat+
-                formatMemberStars(&mem, starFormat, 1, 13)+
-                "\n",
-            name,
-            "#"+score,
-        )
-        secondHalf += fmt.Sprintf(
-            nameScoreFormat+
-                formatMemberStars(&mem, starFormat, 13, 25)+
-                "\n",
-            name,
-            "#"+score,
-        )
-    }
-    buffer.WriteString(firstHalf + secondHalf)
+    formatLeaderboard(&members, &buffer)
     buffer.WriteString("```")
     return buffer.String()
 }
