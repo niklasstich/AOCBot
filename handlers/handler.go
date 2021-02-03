@@ -23,8 +23,14 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
         parse(session, message, 2016, parts)
     } else if strings.HasPrefix(msgContent, "/aoc2017") {
         parse(session, message, 2017, parts)
+    } else if strings.HasPrefix(msgContent, "/aoc2020") {
+        parse(session, message, 2020, parts)
     } else if strings.HasPrefix(msgContent, "/aoc") {
-        parse(session, message, time.Now().Year(), parts)
+        if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
+            parse(session, message, time.Now().Year()-1, parts)
+        } else {
+            parse(session, message, time.Now().Year(), parts)
+        }
     }
 }
 
