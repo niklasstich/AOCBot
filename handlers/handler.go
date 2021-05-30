@@ -1,118 +1,132 @@
 package handlers
 
 import (
-    "../aoc"
-    "../resources"
-    "bytes"
-    "fmt"
-    "github.com/bwmarrin/discordgo"
-    "io"
-    "sort"
-    "strconv"
-    "strings"
-    "text/tabwriter"
-    "time"
+	"bytes"
+	"fmt"
+	"io"
+	"sort"
+	"strconv"
+	"strings"
+	"text/tabwriter"
+	"time"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/niklasstich/AOCBot/aoc"
+	"github.com/niklasstich/AOCBot/resources"
 )
 
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
-    msgContent := strings.TrimSpace(message.Content)
-    parts := strings.Split(msgContent, " ")
-    if strings.HasPrefix(msgContent, "/aoc2015") {
-        parse(session, message, 2015, parts)
-    } else if strings.HasPrefix(msgContent, "/aoc2016") {
-        parse(session, message, 2016, parts)
-    } else if strings.HasPrefix(msgContent, "/aoc2017") {
-        parse(session, message, 2017, parts)
-    } else if strings.HasPrefix(msgContent, "/aoc2020") {
-        parse(session, message, 2020, parts)
-    } else if strings.HasPrefix(msgContent, "/aoc") {
-        if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
-            parse(session, message, time.Now().Year()-1, parts)
-        } else {
-            parse(session, message, time.Now().Year(), parts)
-        }
-    }
+	msgContent := strings.TrimSpace(message.Content)
+	parts := strings.Split(msgContent, " ")
+	//TODO: refactor this with slash commands and have year be an argument, current year as default
+	if strings.HasPrefix(msgContent, "/aoc2015") {
+		parse(session, message, 2015, parts)
+	} else if strings.HasPrefix(msgContent, "/aoc2016") {
+		parse(session, message, 2016, parts)
+	} else if strings.HasPrefix(msgContent, "/aoc2017") {
+		parse(session, message, 2017, parts)
+	} else if strings.HasPrefix(msgContent, "/aoc2020") {
+		parse(session, message, 2020, parts)
+	} else if strings.HasPrefix(msgContent, "/aoc") {
+		if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
+			parse(session, message, time.Now().Year()-1, parts)
+		} else {
+			parse(session, message, time.Now().Year(), parts)
+		}
+	}
 }
 
+//gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
 func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int, parts []string) {
-    config, _ := resources.Config()
-    if len(parts) <= 1 {
-        session.ChannelMessageSend(message.ChannelID, format(top(config, year, 200), year)) // 200 = max members
-    } else {
-        topAmount, _ := strconv.Atoi(parts[1])
-        session.ChannelMessageSend(message.ChannelID, format(top(config, year, topAmount), year))
-    }
+	config, _ := resources.Config()
+	var topMem []aoc.Member
+	var err error
+	if len(parts) <= 1 {
+		topMem, err = top(config, year, 200)
+	} else {
+		topAmount, _ := strconv.Atoi(parts[1])
+		topMem, err = top(config, year, topAmount)
+	}
+	if err != nil {
+		session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+	} else {
+		session.ChannelMessageSend(message.ChannelID, format(topMem, year))
+	}
 }
 
 // return the top x members.
-func top(config *resources.Data, year int, x int) []aoc.Member {
-    memMap := aoc.FetchLeaderboard(config, year).Members
-    memArr := make([]aoc.Member, 0)
-    for _, v := range memMap {
-        memArr = append(memArr, v)
-    }
-    sort.Slice(memArr, func(i, j int) bool {
-        if memArr[i].Stars == memArr[j].Stars {
-            return memArr[i].LocalScore > memArr[j].LocalScore
-        }
-        return memArr[i].Stars > memArr[j].Stars
-    })
-    if x < len(memArr) {
-        return memArr[:x]
-    }
-    return memArr
+func top(config *resources.Data, year int, x int) ([]aoc.Member, error) {
+	lb, err := aoc.FetchLeaderboard(config, year)
+	if err != nil {
+		return nil, err
+	}
+	memMap := lb.Members
+	memArr := make([]aoc.Member, 0)
+	for _, v := range memMap {
+		memArr = append(memArr, v)
+	}
+	sort.Slice(memArr, func(i, j int) bool {
+		if memArr[i].Stars == memArr[j].Stars {
+			return memArr[i].LocalScore > memArr[j].LocalScore
+		}
+		return memArr[i].Stars > memArr[j].Stars
+	})
+	if x < len(memArr) {
+		return memArr[:x], nil
+	}
+	return memArr, nil
 }
 
 func formatDays(startDay int, endDay int) string {
-    var out string
-    for i := startDay; i <= endDay; i++ {
-        dayN := strconv.Itoa(i)
-        out += " " + dayN + " "
-    }
-    return out
+	var out string
+	for i := startDay; i <= endDay; i++ {
+		dayN := strconv.Itoa(i)
+		out += " " + dayN + " "
+	}
+	return out
 }
 
 func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
-    var out string
-    for i := startDay; i < endDay; i++ {
-        dayKey := strconv.Itoa(i)
-        if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
-            if len(day) == 2 {
-                out += "[*]"
-            } else {
-                out += "(*)"
-            }
-        } else {
-            out += "   "
-        }
-    }
-    return out
+	var out string
+	for i := startDay; i < endDay; i++ {
+		dayKey := strconv.Itoa(i)
+		if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
+			if len(day) == 2 {
+				out += "[*]"
+			} else {
+				out += "(*)"
+			}
+		} else {
+			out += "   "
+		}
+	}
+	return out
 }
 
 func formatLeaderboard(members *[]aoc.Member, w io.Writer) {
-    const padding = 3
-    tw := tabwriter.NewWriter(w, 0, 0, padding, ' ', 0)
-    dayRanges := [][]int{{1, 14}, {15, 25}}
-    for _, days := range dayRanges {
-        startDay, endDay := days[0], days[1]
-        fmt.Fprintln(tw, "\t\t"+formatDays(startDay, endDay)+"\t") // header
-        for _, mem := range *members {
-            score := strconv.Itoa(mem.LocalScore)
-            fmt.Fprintln(tw, mem.Name+"\t#"+score+"\t"+formatMemberStars(mem, startDay, endDay)+"\t")
-        }
-    }
-    tw.Flush()
+	const padding = 3
+	tw := tabwriter.NewWriter(w, 0, 0, padding, ' ', 0)
+	dayRanges := [][]int{{1, 14}, {15, 25}}
+	for _, days := range dayRanges {
+		startDay, endDay := days[0], days[1]
+		fmt.Fprintln(tw, "\t\t"+formatDays(startDay, endDay)+"\t") // header
+		for _, mem := range *members {
+			score := strconv.Itoa(mem.LocalScore)
+			fmt.Fprintln(tw, mem.Name+"\t#"+score+"\t"+formatMemberStars(mem, startDay, endDay)+"\t")
+		}
+	}
+	tw.Flush()
 }
 
 // format a list of members as string
 func format(members []aoc.Member, year int) string {
-    strYear := strconv.Itoa(year)
-    var buffer bytes.Buffer
-    buffer.WriteString(
-        "Programmingcord Leaderboard (" + strYear + "):\n" +
-            "```css\n",
-    )
-    formatLeaderboard(&members, &buffer)
-    buffer.WriteString("```")
-    return buffer.String()
+	strYear := strconv.Itoa(year)
+	var buffer bytes.Buffer
+	buffer.WriteString(
+		"Programmingcord Leaderboard (" + strYear + "):\n" +
+			"```css\n",
+	)
+	formatLeaderboard(&members, &buffer)
+	buffer.WriteString("```")
+	return buffer.String()
 }
