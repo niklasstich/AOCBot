@@ -35,7 +35,7 @@ type Member struct {
 func FetchLeaderboard(config *resources.Data, year int) (*Leaderboard, error) {
 	//Limit requests to leaderboard to every 15 minutes
 	d, _ := time.ParseDuration("15m")
-	if time.Now().Sub(lastHit) < d {
+	if time.Since(lastHit) < d {
 		return lastLeaderboard, nil
 	}
 	fmt.Println("fetching data..")
@@ -63,5 +63,6 @@ func FetchLeaderboard(config *resources.Data, year int) (*Leaderboard, error) {
 		return nil, fmt.Errorf("failed decoding responce from adventofcode.com, %v\n<@136512985542819840> fix your session token babyrage", err)
 	}
 	lastLeaderboard = &leaderb
+	lastHit = time.Now()
 	return &leaderb, nil
 }
