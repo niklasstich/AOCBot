@@ -2,12 +2,16 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/niklasstich/AOCBot/handlers"
 	"github.com/niklasstich/AOCBot/resources"
 )
+
+var session *discordgo.Session
 
 func main() {
 	fmt.Println("starting bot")
@@ -19,20 +23,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Listening for input..")
-	lock := make(chan struct{})
+
+	//closing shenanigans
+	defer session.Close()
+	lock := make(chan os.Signal)
+	signal.Notify(lock, os.Interrupt, os.Kill)
 	<-lock
+	fmt.Println("shutting down gracefully")
 }
 
 func discordSetup(token string) error {
-	discord, err := discordgo.New("Bot " + strings.Trim(token, "\n"))
+	var err error
+	session, err = discordgo.New("Bot " + strings.Trim(token, "\n"))
 	if err != nil {
 		return err
 	}
-	err = discord.Open()
+	err = session.Open()
 	if err != nil {
 		return err
 	}
-	discord.AddHandler(handlers.CommandHandler)
+	session.AddHandler(handlers.CommandHandler)
+	session.AddHandler(func(sess *discordgo.Session, r *discordgo.Ready) {
+		fmt.Println("Bot up!")
+	})
 	return nil
 }
