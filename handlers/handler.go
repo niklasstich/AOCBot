@@ -15,6 +15,8 @@ import (
 	"github.com/niklasstich/AOCBot/resources"
 )
 
+const dayStarFormat = "%3v"
+
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
 	msgContent := strings.TrimSpace(message.Content)
 	parts := strings.Split(msgContent, " ")
@@ -80,25 +82,24 @@ func top(config *resources.Data, year int, x int) ([]aoc.Member, error) {
 func formatDays(startDay int, endDay int) string {
 	var out string
 	for i := startDay; i <= endDay; i++ {
-		dayN := strconv.Itoa(i)
-		out += " " + dayN + " "
+		out += fmt.Sprintf(dayStarFormat, strconv.Itoa(i))
 	}
 	return out
 }
 
 func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
 	var out string
+	var star string
 	for i := startDay; i < endDay; i++ {
 		dayKey := strconv.Itoa(i)
 		if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
 			if len(day) == 2 {
-				out += "[*]"
+				star = "[*]"
 			} else {
-				out += "(*)"
+				star = "(*)"
 			}
-		} else {
-			out += "   "
 		}
+		out += fmt.Sprintf(dayStarFormat, star)
 	}
 	return out
 }
