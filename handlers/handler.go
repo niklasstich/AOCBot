@@ -13,6 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/niklasstich/AOCBot/aoc"
 	"github.com/niklasstich/AOCBot/resources"
+	log "github.com/sirupsen/logrus"
 )
 
 const dayStarFormat = "%3v"
@@ -43,6 +44,16 @@ func parse(session *discordgo.Session, message *discordgo.MessageCreate, year in
 	config, _ := resources.Config()
 	var topMem []aoc.Member
 	var err error
+	//get guild name
+	var guildName string
+	guild, err := session.Guild(message.GuildID)
+	if err != nil {
+		log.Errorf("Failed to get guild for GuildID %v: %v", message.GuildID, err)
+		guildName = "unknown"
+	} else {
+		guildName = guild.Name
+	}
+
 	if len(parts) <= 1 {
 		topMem, err = top(config, year, 200)
 	} else {
@@ -52,7 +63,7 @@ func parse(session *discordgo.Session, message *discordgo.MessageCreate, year in
 	if err != nil {
 		session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
 	} else {
-		session.ChannelMessageSend(message.ChannelID, format(topMem, year))
+		session.ChannelMessageSend(message.ChannelID, format(topMem, year, guildName))
 	}
 }
 
@@ -127,13 +138,10 @@ func formatLeaderboard(members *[]aoc.Member, w io.Writer) {
 }
 
 // format a list of members as string
-func format(members []aoc.Member, year int) string {
+func format(members []aoc.Member, year int, guildName string) string {
 	strYear := strconv.Itoa(year)
 	var buffer bytes.Buffer
-	buffer.WriteString(
-		"Programmingcord Leaderboard (" + strYear + "):\n" +
-			"```css\n",
-	)
+	buffer.WriteString(fmt.Sprintf("%s Leaderboard (Year %s)\n```css\n", guildName, strYear))
 	formatLeaderboard(&members, &buffer)
 	buffer.WriteString("```")
 	return buffer.String()
