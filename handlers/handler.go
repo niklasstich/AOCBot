@@ -82,7 +82,7 @@ func top(config *resources.Data, year int, x int) ([]aoc.Member, error) {
 func formatDays(startDay int, endDay int) string {
 	var out string
 	for i := startDay; i <= endDay; i++ {
-		if i == 1 {
+		if i == startDay {
 			out += fmt.Sprintf("%2v", strconv.Itoa(i))
 		} else {
 			out += fmt.Sprintf(dayStarFormat, strconv.Itoa(i))
@@ -93,17 +93,20 @@ func formatDays(startDay int, endDay int) string {
 
 func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
 	var out string
-	//var star string
 	for i := startDay; i <= endDay; i++ {
 		dayKey := strconv.Itoa(i)
 		if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
-			if len(day) == 2 {
+			switch len(day) {
+			case 2:
 				out += "[*]"
-			} else {
+			case 1:
 				out += "(*)"
+			default: //len is either 0 or greater than 2, both of which make no sense, therefore space
+				out += "   "
 			}
+		} else { //if !dayOk, then there was no entry for the day in the map, we assume no stars were gotten
+			out += "   "
 		}
-		//out += fmt.Sprintf(dayStarFormat, star)
 	}
 	return out
 }
