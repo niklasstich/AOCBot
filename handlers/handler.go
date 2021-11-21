@@ -82,24 +82,28 @@ func top(config *resources.Data, year int, x int) ([]aoc.Member, error) {
 func formatDays(startDay int, endDay int) string {
 	var out string
 	for i := startDay; i <= endDay; i++ {
-		out += fmt.Sprintf(dayStarFormat, strconv.Itoa(i))
+		if i == 1 {
+			out += fmt.Sprintf("%2v", strconv.Itoa(i))
+		} else {
+			out += fmt.Sprintf(dayStarFormat, strconv.Itoa(i))
+		}
 	}
 	return out
 }
 
 func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
 	var out string
-	var star string
-	for i := startDay; i < endDay; i++ {
+	//var star string
+	for i := startDay; i <= endDay; i++ {
 		dayKey := strconv.Itoa(i)
 		if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
 			if len(day) == 2 {
-				star = "[*]"
+				out += "[*]"
 			} else {
-				star = "(*)"
+				out += "(*)"
 			}
 		}
-		out += fmt.Sprintf(dayStarFormat, star)
+		//out += fmt.Sprintf(dayStarFormat, star)
 	}
 	return out
 }
