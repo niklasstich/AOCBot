@@ -15,6 +15,8 @@ import (
 	"github.com/niklasstich/AOCBot/resources"
 )
 
+const dayStarFormat = "%3v"
+
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
 	msgContent := strings.TrimSpace(message.Content)
 	parts := strings.Split(msgContent, " ")
@@ -80,23 +82,29 @@ func top(config *resources.Data, year int, x int) ([]aoc.Member, error) {
 func formatDays(startDay int, endDay int) string {
 	var out string
 	for i := startDay; i <= endDay; i++ {
-		dayN := strconv.Itoa(i)
-		out += " " + dayN + " "
+		if i == startDay {
+			out += fmt.Sprintf("%2v", strconv.Itoa(i))
+		} else {
+			out += fmt.Sprintf(dayStarFormat, strconv.Itoa(i))
+		}
 	}
 	return out
 }
 
 func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
 	var out string
-	for i := startDay; i < endDay; i++ {
+	for i := startDay; i <= endDay; i++ {
 		dayKey := strconv.Itoa(i)
 		if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
-			if len(day) == 2 {
+			switch len(day) {
+			case 2:
 				out += "[*]"
-			} else {
+			case 1:
 				out += "(*)"
+			default: //len is either 0 or greater than 2, both of which make no sense, therefore space
+				out += "   "
 			}
-		} else {
+		} else { //if !dayOk, then there was no entry for the day in the map, we assume no stars were gotten
 			out += "   "
 		}
 	}
