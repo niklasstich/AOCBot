@@ -2,3 +2,5 @@
 .idea/*
 data.json
 out/
+.DS_Store
+debug/

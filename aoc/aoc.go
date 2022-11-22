@@ -5,21 +5,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/niklasstich/AOCBot/resources"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
-	"time"
-
-	"github.com/niklasstich/AOCBot/resources"
-)
-
-var (
-	lastHit         time.Time
-	lastLeaderboard *Leaderboard
 )
 
 type Leaderboard struct {
-	OwnerId string            `json:"owner_id"`
+	OwnerId int               `json:"owner_id"`
 	Event   string            `json:"event"`
 	Members map[string]Member `json:"members"`
 }
@@ -33,11 +27,6 @@ type Member struct {
 }
 
 func FetchLeaderboard(config *resources.Data, year int) (*Leaderboard, error) {
-	//Limit requests to leaderboard to every 15 minutes
-	d, _ := time.ParseDuration("15m")
-	if time.Since(lastHit) < d {
-		return lastLeaderboard, nil
-	}
 	fmt.Println("fetching data..")
 	url := "https://adventofcode.com/" + strconv.Itoa(year) + "/leaderboard/private/view/" + config.LeaderboardID + ".json"
 	req, err := http.NewRequest("GET", url, nil)
@@ -62,7 +51,30 @@ func FetchLeaderboard(config *resources.Data, year int) (*Leaderboard, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed decoding responce from adventofcode.com, %v\n<@136512985542819840> fix your session token babyrage", err)
 	}
-	lastLeaderboard = &leaderb
-	lastHit = time.Now()
 	return &leaderb, nil
+}
+
+// return the top x members.
+func Top(leaderboard *Leaderboard, x int) ([]Member, error) {
+	for key, mem := range leaderboard.Members {
+		if mem.Name == "" {
+			mem.Name = fmt.Sprintf("Anonymous %s", key)
+			leaderboard.Members[key] = mem
+		}
+	}
+	memMap := leaderboard.Members
+	memArr := make([]Member, 0)
+	for _, v := range memMap {
+		memArr = append(memArr, v)
+	}
+	sort.Slice(memArr, func(i, j int) bool {
+		if memArr[i].Stars == memArr[j].Stars {
+			return memArr[i].LocalScore > memArr[j].LocalScore
+		}
+		return memArr[i].Stars > memArr[j].Stars
+	})
+	if x < len(memArr) {
+		return memArr[:x], nil
+	}
+	return memArr, nil
 }

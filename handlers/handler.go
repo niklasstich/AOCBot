@@ -3,8 +3,11 @@ package handlers
 import (
 	"bytes"
 	"fmt"
+	"github.com/niklasstich/AOCBot/resources"
+	"github.com/niklasstich/AOCBot/svg"
 	"io"
-	"sort"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -12,82 +15,111 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/niklasstich/AOCBot/aoc"
-	"github.com/niklasstich/AOCBot/resources"
-	log "github.com/sirupsen/logrus"
 )
+
+type imageCacheEntry struct {
+	pngPath string
+	created time.Time
+}
+
+var (
+	imageCache map[int]imageCacheEntry
+)
+
+func init() {
+	imageCache = map[int]imageCacheEntry{}
+}
 
 const dayStarFormat = "%3v"
 
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
 	msgContent := strings.TrimSpace(message.Content)
-	parts := strings.Split(msgContent, " ")
 	//TODO: refactor this with slash commands and have year be an argument, current year as default
-	if strings.HasPrefix(msgContent, "/aoc2015") {
-		parse(session, message, 2015, parts)
-	} else if strings.HasPrefix(msgContent, "/aoc2016") {
-		parse(session, message, 2016, parts)
-	} else if strings.HasPrefix(msgContent, "/aoc2017") {
-		parse(session, message, 2017, parts)
-	} else if strings.HasPrefix(msgContent, "/aoc2020") {
-		parse(session, message, 2020, parts)
+	if strings.HasPrefix(msgContent, "/aoc2020") {
+		parse(session, message, 2020)
+	} else if strings.HasPrefix(msgContent, "/aoc2021") {
+		parse(session, message, 2021)
+	} else if strings.HasPrefix(msgContent, "/aoc2022") {
+		parse(session, message, 2022)
 	} else if strings.HasPrefix(msgContent, "/aoc") {
 		if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
-			parse(session, message, time.Now().Year()-1, parts)
+			parse(session, message, time.Now().Year()-1)
 		} else {
-			parse(session, message, time.Now().Year(), parts)
+			parse(session, message, time.Now().Year())
 		}
 	}
 }
 
-//gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
-func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int, parts []string) {
+// gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
+func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
+	d, _ := time.ParseDuration("15m")
+	cacheEntry, ok := imageCache[year]
+	if ok && time.Since(cacheEntry.created) < d {
+		sendPng(cacheEntry.pngPath, session, message)
+		return
+	}
 	config, _ := resources.Config()
-	var topMem []aoc.Member
 	var err error
-	//get guild name
-	var guildName string
-	guild, err := session.Guild(message.GuildID)
+
+	//get leaderboard
+	leaderboard, err := aoc.FetchLeaderboard(config, year)
 	if err != nil {
-		log.Errorf("Failed to get guild for GuildID %v: %v", message.GuildID, err)
-		guildName = "unknown"
-	} else {
-		guildName = guild.Name
+		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		return
 	}
 
-	if len(parts) <= 1 {
-		topMem, err = top(config, year, 200)
-	} else {
-		topAmount, _ := strconv.Atoi(parts[1])
-		topMem, err = top(config, year, topAmount)
-	}
+	sortedMembers, err := aoc.Top(leaderboard, 50)
+
 	if err != nil {
-		session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		return
+	}
+
+	currentTime := time.Now().Format("2006-01-02_15-04-05")
+	svgPath := fmt.Sprintf("/out/%s.svg", currentTime)
+	pngPath := fmt.Sprintf("/out/%s.png", currentTime)
+
+	err = svg.GenerateSvg(sortedMembers, svgPath)
+	if err != nil {
+		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		return
+	}
+
+	err = ConvertSvgToPng(svgPath, pngPath)
+	if err != nil {
+		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		return
+	}
+
+	cacheEntry = imageCacheEntry{
+		pngPath: pngPath,
+		created: time.Now(),
+	}
+	imageCache[year] = cacheEntry
+
+	if err != nil {
+		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
 	} else {
-		session.ChannelMessageSend(message.ChannelID, format(topMem, year, guildName))
+		sendPng(pngPath, session, message)
 	}
 }
 
-// return the top x members.
-func top(config *resources.Data, year int, x int) ([]aoc.Member, error) {
-	lb, err := aoc.FetchLeaderboard(config, year)
+func sendPng(pngPath string, session *discordgo.Session, message *discordgo.MessageCreate) {
+	png, err := os.Open(pngPath)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	memMap := lb.Members
-	memArr := make([]aoc.Member, 0)
-	for _, v := range memMap {
-		memArr = append(memArr, v)
-	}
-	sort.Slice(memArr, func(i, j int) bool {
-		if memArr[i].Stars == memArr[j].Stars {
-			return memArr[i].LocalScore > memArr[j].LocalScore
-		}
-		return memArr[i].Stars > memArr[j].Stars
-	})
-	if x < len(memArr) {
-		return memArr[:x], nil
-	}
-	return memArr, nil
+	_, _ = session.ChannelFileSend(message.ChannelID, "leaderboard.png", png)
+}
+
+func ConvertSvgToPng(svg string, png string) (err error) {
+	command := exec.Command("inkscape",
+		"--export-type=png",
+		fmt.Sprintf("--export-filename=%s", png),
+		"--export-dpi=200",
+		fmt.Sprintf("%s", svg))
+	err = command.Run()
+	return
 }
 
 func formatDays(startDay int, endDay int) string {

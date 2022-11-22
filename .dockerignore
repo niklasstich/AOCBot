@@ -4,3 +4,4 @@
 .gitignore
 readme.md
 resources/data.json
+.DS_Store

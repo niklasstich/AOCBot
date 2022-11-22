@@ -13,6 +13,14 @@ import (
 
 var session *discordgo.Session
 
+func init() {
+	//assert folder exists
+	err := os.Mkdir("/out", 0755)
+	if err != nil && !os.IsExist(err) {
+		panic(err)
+	}
+}
+
 func main() {
 	fmt.Println("starting bot")
 	config, err := resources.Config()
