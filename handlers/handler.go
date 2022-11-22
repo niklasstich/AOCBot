@@ -3,8 +3,6 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	"github.com/niklasstich/AOCBot/resources"
-	"github.com/niklasstich/AOCBot/svg"
 	"io"
 	"os"
 	"os/exec"
@@ -12,6 +10,9 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/niklasstich/AOCBot/resources"
+	"github.com/niklasstich/AOCBot/svg"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/niklasstich/AOCBot/aoc"
@@ -55,7 +56,7 @@ func parse(session *discordgo.Session, message *discordgo.MessageCreate, year in
 	d, _ := time.ParseDuration("15m")
 	cacheEntry, ok := imageCache[year]
 	if ok && time.Since(cacheEntry.created) < d {
-		sendPng(cacheEntry.pngPath, session, message)
+		sendPng(cacheEntry.pngPath, session, message, cacheEntry)
 		return
 	}
 	config, _ := resources.Config()
@@ -100,16 +101,26 @@ func parse(session *discordgo.Session, message *discordgo.MessageCreate, year in
 	if err != nil {
 		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
 	} else {
-		sendPng(pngPath, session, message)
+		sendPng(pngPath, session, message, cacheEntry)
 	}
 }
 
-func sendPng(pngPath string, session *discordgo.Session, message *discordgo.MessageCreate) {
+func sendPng(pngPath string, session *discordgo.Session, message *discordgo.MessageCreate, entry imageCacheEntry) {
 	png, err := os.Open(pngPath)
 	if err != nil {
 		panic(err)
 	}
-	_, _ = session.ChannelFileSend(message.ChannelID, "leaderboard.png", png)
+	_, _ = session.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
+		Files: []*discordgo.File{
+			{
+				Name:   "leaderboard.png",
+				Reader: png,
+			},
+		},
+		Content: fmt.Sprintf("Leaderboard last updated: <t:%d> Next update: <t:%d:R>", 
+			entry.created.Unix(), 
+			entry.created.Add(15*time.Minute).Unix()),
+	})
 }
 
 func ConvertSvgToPng(svg string, png string) (err error) {
