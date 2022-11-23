@@ -24,11 +24,13 @@ type imageCacheEntry struct {
 }
 
 var (
-	imageCache map[int]imageCacheEntry
+	imageCache      map[int]imageCacheEntry
+	lastMessageTime time.Time
 )
 
 func init() {
 	imageCache = map[int]imageCacheEntry{}
+	lastMessageTime = time.Now().Add(-1 * time.Minute)
 }
 
 const dayStarFormat = "%3v"
@@ -36,6 +38,7 @@ const dayStarFormat = "%3v"
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
 	msgContent := strings.TrimSpace(message.Content)
 	//TODO: refactor this with slash commands and have year be an argument, current year as default
+
 	if strings.HasPrefix(msgContent, "/aoc2020") {
 		parse(session, message, 2020)
 	} else if strings.HasPrefix(msgContent, "/aoc2021") {
@@ -54,9 +57,15 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
 // gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
 func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
 	d, _ := time.ParseDuration("15m")
+
+	if lastMessageTime.Add(1 * time.Minute).After(time.Now()) {
+		return
+	}
+	lastMessageTime = time.Now()
 	cacheEntry, ok := imageCache[year]
 	if ok && time.Since(cacheEntry.created) < d {
 		sendPng(cacheEntry.pngPath, session, message, cacheEntry)
+
 		return
 	}
 	config, _ := resources.Config()
@@ -117,8 +126,8 @@ func sendPng(pngPath string, session *discordgo.Session, message *discordgo.Mess
 				Reader: png,
 			},
 		},
-		Content: fmt.Sprintf("Leaderboard last updated: <t:%d> Next update: <t:%d:R>", 
-			entry.created.Unix(), 
+		Content: fmt.Sprintf("Leaderboard last updated: <t:%d> Next update: <t:%d:R>",
+			entry.created.Unix(),
 			entry.created.Add(15*time.Minute).Unix()),
 	})
 }
