@@ -3,10 +3,11 @@ package svg
 import (
 	_ "embed"
 	"fmt"
-	svg "github.com/ajstarks/svgo"
-	"github.com/niklasstich/AOCBot/aoc"
 	"os"
 	"strconv"
+
+	svg "github.com/ajstarks/svgo"
+	"github.com/niklasstich/AOCBot/aoc"
 )
 
 var (
@@ -56,10 +57,10 @@ func PrintMembers(canvas *svg.SVG, members []aoc.Member) {
 		for j := 1; j < 26; j++ {
 			day, ok := member.CompletionDayLevel[strconv.FormatInt(int64(j), 10)]
 			if !ok {
-				PrintStar(canvas, i, j, "dimgrey")
+				PrintStar(canvas, i, j, "RGB(60,60,60)")
 			} else if _, ok := day["1"]; ok {
 				if _, ok := day["2"]; ok {
-					PrintStar(canvas, i, j, "gold")
+					PrintStar(canvas, i, j, "#F2C83B")
 				} else {
 					PrintStar(canvas, i, j, "lightgrey")
 				}
@@ -71,7 +72,7 @@ func PrintMembers(canvas *svg.SVG, members []aoc.Member) {
 
 func PrintStar(canvas *svg.SVG, i int, j int, colour string) {
 	canvas.Text(nameWidth+starGap*j,
-		96+i*20,
+		96+i*20+3,
 		"*",
 		fmt.Sprintf("fill: %s; font-family: Fira Code; font-size: 12px;"+
 			"dominant-baseline:middle; text-anchor:middle;",
