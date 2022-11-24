@@ -24,7 +24,8 @@ type imageCacheEntry struct {
 }
 
 var (
-	imageCache map[int]imageCacheEntry
+	imageCache          map[int]imageCacheEntry
+	lastMessageSentTime time.Time
 )
 
 func init() {
@@ -36,6 +37,7 @@ const dayStarFormat = "%3v"
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
 	msgContent := strings.TrimSpace(message.Content)
 	//TODO: refactor this with slash commands and have year be an argument, current year as default
+
 	if strings.HasPrefix(msgContent, "/aoc2020") {
 		parse(session, message, 2020)
 	} else if strings.HasPrefix(msgContent, "/aoc2021") {
@@ -53,15 +55,21 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
 
 // gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
 func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
+	if !lastMessageSentTime.Add(1 * time.Minute).Before(time.Now()) {
+		return
+	}
+
+	lastMessageSentTime = time.Now()
 	d, _ := time.ParseDuration("15m")
+
 	cacheEntry, ok := imageCache[year]
 	if ok && time.Since(cacheEntry.created) < d {
 		sendPng(cacheEntry.pngPath, session, message, cacheEntry)
 		return
 	}
 	config, _ := resources.Config()
-	var err error
 
+	var err error
 	//get leaderboard
 	leaderboard, err := aoc.FetchLeaderboard(config, year)
 	if err != nil {
@@ -80,7 +88,7 @@ func parse(session *discordgo.Session, message *discordgo.MessageCreate, year in
 	svgPath := fmt.Sprintf("/out/%s.svg", currentTime)
 	pngPath := fmt.Sprintf("/out/%s.png", currentTime)
 
-	err = svg.GenerateSvg(sortedMembers, svgPath)
+	err = svg.GenerateSvg(year, sortedMembers, svgPath)
 	if err != nil {
 		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
 		return
@@ -117,8 +125,8 @@ func sendPng(pngPath string, session *discordgo.Session, message *discordgo.Mess
 				Reader: png,
 			},
 		},
-		Content: fmt.Sprintf("Leaderboard last updated: <t:%d> Next update: <t:%d:R>", 
-			entry.created.Unix(), 
+		Content: fmt.Sprintf("Leaderboard last updated: <t:%d> Next update: <t:%d:R>",
+			entry.created.Unix(),
 			entry.created.Add(15*time.Minute).Unix()),
 	})
 }
