@@ -24,13 +24,12 @@ type imageCacheEntry struct {
 }
 
 var (
-	imageCache      map[int]imageCacheEntry
-	lastMessageTime time.Time
+	imageCache          map[int]imageCacheEntry
+	lastMessageSentTime time.Time
 )
 
 func init() {
 	imageCache = map[int]imageCacheEntry{}
-	lastMessageTime = time.Now().Add(-1 * time.Minute)
 }
 
 const dayStarFormat = "%3v"
@@ -56,21 +55,21 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
 
 // gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
 func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
-	d, _ := time.ParseDuration("15m")
-
-	if lastMessageTime.Add(1 * time.Minute).After(time.Now()) {
+	if !lastMessageSentTime.Add(1 * time.Minute).Before(time.Now()) {
 		return
 	}
-	lastMessageTime = time.Now()
+
+	lastMessageSentTime = time.Now()
+	d, _ := time.ParseDuration("15m")
+
 	cacheEntry, ok := imageCache[year]
 	if ok && time.Since(cacheEntry.created) < d {
 		sendPng(cacheEntry.pngPath, session, message, cacheEntry)
-
 		return
 	}
 	config, _ := resources.Config()
-	var err error
 
+	var err error
 	//get leaderboard
 	leaderboard, err := aoc.FetchLeaderboard(config, year)
 	if err != nil {
@@ -89,7 +88,7 @@ func parse(session *discordgo.Session, message *discordgo.MessageCreate, year in
 	svgPath := fmt.Sprintf("/out/%s.svg", currentTime)
 	pngPath := fmt.Sprintf("/out/%s.png", currentTime)
 
-	err = svg.GenerateSvg(sortedMembers, svgPath)
+	err = svg.GenerateSvg(year, sortedMembers, svgPath)
 	if err != nil {
 		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
 		return
