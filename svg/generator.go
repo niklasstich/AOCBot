@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"time"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/niklasstich/AOCBot/aoc"
@@ -89,10 +90,15 @@ Add random year markup to the image
 Just like on the real leaderboard
 */
 func AddRandomYearMarkup(year int) {
-	rand := rand.Intn(5)
+	//If we don't add random seed after a certain amount of request 
+	//the random numbers will be the same
+	rand.Seed(time.Now().UnixNano())
+	min := 0
+	max := 5
+	rand := rand.Intn(max-min+1) + min
 
 	switch rand {
-	case 0:
+	case 1:
 		canvas.Text(248, 50,
 			"$year=",
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
@@ -103,7 +109,7 @@ func AddRandomYearMarkup(year int) {
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
 				"dominant-baseline:middle; text-anchor:start;"+
 				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
-	case 1:
+	case 2:
 		canvas.Text(253, 50,
 			"0xffff&",
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
@@ -114,7 +120,7 @@ func AddRandomYearMarkup(year int) {
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
 				"dominant-baseline:middle; text-anchor:start;"+
 				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
-	case 2:
+	case 3:
 		canvas.Text(273, 50,
 			"/*",
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
@@ -130,7 +136,7 @@ func AddRandomYearMarkup(year int) {
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
 				"dominant-baseline:middle; text-anchor:start;"+
 				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
-	case 3:
+	case 4:
 		canvas.Text(289, 50,
 			"λy.",
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
@@ -141,7 +147,7 @@ func AddRandomYearMarkup(year int) {
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
 				"dominant-baseline:middle; text-anchor:start;"+
 				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
-	case 4:
+	case 5:
 		canvas.Text(273, 50,
 			"/^",
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
@@ -157,7 +163,7 @@ func AddRandomYearMarkup(year int) {
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
 				"dominant-baseline:middle; text-anchor:start;"+
 				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
-	case 5:
+	case 6:
 		canvas.Text(299, 50,
 			"//",
 			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
