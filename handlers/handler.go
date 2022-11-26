@@ -48,7 +48,7 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
 	if strings.HasPrefix(msgContent, "/aoc") {
 		_, after, ok := strings.Cut(msgContent, " ")
 		if ok {
-			if intVar, err := strconv.ParseInt(after, 10, 32); err == nil && intVar > 2015 && intVar <= int64(time.Now().Year()) {
+			if intVar, err := strconv.ParseInt(after, 10, 32); err == nil && intVar >= 2015 && intVar <= int64(time.Now().Year()) {
 				parse(session, message, int((intVar)))
 			} else {
 				lastYearLeaderboard(session, message)
