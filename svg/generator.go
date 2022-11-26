@@ -3,8 +3,10 @@ package svg
 import (
 	_ "embed"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
+	"time"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/niklasstich/AOCBot/aoc"
@@ -13,6 +15,7 @@ import (
 var (
 	nameWidth = 140
 	starGap   = 22
+	canvas    *svg.SVG
 )
 
 func GenerateSvg(year int, members []aoc.Member, filepath string) (err error) {
@@ -25,7 +28,7 @@ func GenerateSvg(year int, members []aoc.Member, filepath string) (err error) {
 		return
 	}
 	defer file.Close()
-	canvas := svg.New(file)
+	canvas = svg.New(file)
 	canvas.Start(width, height)
 
 	//header and lines
@@ -35,17 +38,7 @@ func GenerateSvg(year int, members []aoc.Member, filepath string) (err error) {
 		"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
 			"dominant-baseline:middle; text-anchor:middle;"+
 			"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
-	//Align //Year right underneath Advent
-	canvas.Text(301, 50,
-		"//",
-		"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
-			"dominant-baseline:middle; text-anchor:start;"+
-			"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
-	canvas.Text(320, 50,
-		fmt.Sprintf("%d", year),
-		"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
-			"dominant-baseline:middle; text-anchor:start;"+
-			"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+	AddRandomYearMarkup(year)
 	canvas.Line(0, 80, width, 80, "stroke: rgb(0, 99, 0); stroke-width: 2;")
 	canvas.Line(nameWidth, 80, nameWidth, height, "stroke: rgb(0, 99, 0); stroke-width: 2;")
 
@@ -90,4 +83,107 @@ func PrintStar(canvas *svg.SVG, i int, j int, colour string) {
 			colour),
 	)
 
+}
+
+/*
+Add random year markup to the image
+Just like on the real leaderboard
+*/
+func AddRandomYearMarkup(year int) {
+	//If we don't add random seed after a certain amount of request 
+	//the random numbers will be the same
+	rand.Seed(time.Now().UnixNano())
+	min := 0
+	max := 5
+	rand := rand.Intn(max-min+1) + min
+
+	switch rand {
+	case 1:
+		canvas.Text(248, 50,
+			"$year=",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(320, 50,
+			fmt.Sprintf("%d;", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+	case 2:
+		canvas.Text(253, 50,
+			"0xffff&",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(320, 50,
+			fmt.Sprintf("%d", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+	case 3:
+		canvas.Text(273, 50,
+			"/*",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(296, 50,
+			fmt.Sprintf("%d", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+		canvas.Text(348, 50,
+			"*/",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+	case 4:
+		canvas.Text(289, 50,
+			"λy.",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(320, 50,
+			fmt.Sprintf("%d", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+	case 5:
+		canvas.Text(273, 50,
+			"/^",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(296, 50,
+			fmt.Sprintf("%d", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+		canvas.Text(348, 50,
+			"$/",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+	case 6:
+		canvas.Text(299, 50,
+			"//",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(320, 50,
+			fmt.Sprintf("%d", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+	default:
+		canvas.Text(241, 50,
+			"var y=",
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00; opacity: 0.4; letter-spacing: -0.05em;")
+		canvas.Text(309, 50,
+			fmt.Sprintf("%d;", year),
+			"fill: rgb(0, 144, 0); font-family: Fira Code; font-size: 20.7px;"+
+				"dominant-baseline:middle; text-anchor:start;"+
+				"text-shadow: 0 0 1px #00cc00, 0 0 7px #00cc00;")
+	}
 }
