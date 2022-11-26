@@ -144,12 +144,14 @@ func replyWithError(s *discordgo.Session, channelID string, err error) {
 	)
 }
 
-func replyWithLeaderboardImage(session *discordgo.Session, channelID string, imageEntry imageCacheEntry) {
+func replyWithLeaderboardImage(s *discordgo.Session, channelID string, imageEntry imageCacheEntry) {
 	png, err := os.Open(imageEntry.pngPath)
 	if err != nil {
-		panic(err)
+		replyWithError(s, channelID, err)
+		return
 	}
-	session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+
+	s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Files: []*discordgo.File{
 			{
 				Name:   "leaderboard.png",
