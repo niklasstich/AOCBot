@@ -43,7 +43,7 @@ func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate
 	if strings.HasPrefix(msgContent, "/aoc-info") {
 		infotext := "Advent Of Code: https://adventofcode.com/2022/about \n" +
 			"Join our leaderboard from https://adventofcode.com/2022/leaderboard/private with this join code: `784176-b767a0f2`.\n" +
-			"Use `/aoc year` command to see the current leaderboard."
+			"Use `/aoc <year>` command to see the current leaderboard."
 		session.ChannelMessageSend(message.ChannelID, infotext)
 		lastMessageSentTime = time.Now()
 		return
