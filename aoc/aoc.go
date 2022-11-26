@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/niklasstich/AOCBot/resources"
 	"io"
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
+
+	"github.com/niklasstich/AOCBot/resources"
 )
 
 type Leaderboard struct {
@@ -24,6 +26,16 @@ type Member struct {
 	GlobalScore        int                               `json:"global_score"`
 	Stars              int                               `json:"stars"`
 	CompletionDayLevel map[string]map[string]interface{} `json:"completion_day_level"`
+}
+
+const FirstYear = 2015
+
+func LastYearAvailable() int {
+	if time.Now().Month() < 12 {
+		return time.Now().Year() - 1
+	} else {
+		return time.Now().Year()
+	}
 }
 
 func FetchLeaderboard(config *resources.Data, year int) (*Leaderboard, error) {
