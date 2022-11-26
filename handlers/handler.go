@@ -35,6 +35,9 @@ func init() {
 const dayStarFormat = "%3v"
 
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
+	if !lastMessageSentTime.Add(2 * time.Minute).Before(time.Now()) {
+		return
+	}
 	msgContent := strings.TrimSpace(message.Content)
 
 	if strings.HasPrefix(msgContent, "/aoc-info") {
@@ -69,9 +72,7 @@ func lastYearLeaderboard(session *discordgo.Session, message *discordgo.MessageC
 
 // gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
 func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
-	if !lastMessageSentTime.Add(2 * time.Minute).Before(time.Now()) {
-		return
-	}
+
 
 	lastMessageSentTime = time.Now()
 	d, _ := time.ParseDuration("15m")
