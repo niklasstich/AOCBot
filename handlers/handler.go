@@ -36,26 +36,40 @@ const dayStarFormat = "%3v"
 
 func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
 	msgContent := strings.TrimSpace(message.Content)
-	//TODO: refactor this with slash commands and have year be an argument, current year as default
 
-	if strings.HasPrefix(msgContent, "/aoc2020") {
-		parse(session, message, 2020)
-	} else if strings.HasPrefix(msgContent, "/aoc2021") {
-		parse(session, message, 2021)
-	} else if strings.HasPrefix(msgContent, "/aoc2022") {
-		parse(session, message, 2022)
-	} else if strings.HasPrefix(msgContent, "/aoc") {
-		if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
-			parse(session, message, time.Now().Year()-1)
+	if strings.HasPrefix(msgContent, "/aoc-info") {
+		infotext := "Advent Of Code: https://adventofcode.com/2022/about \n" +
+			"Join our leaderboard from https://adventofcode.com/2022/leaderboard/private with this join code: `784176-b767a0f2`.\n" +
+			"Use `/aoc year` command to see the current leaderboard."
+		session.ChannelMessageSend(message.ChannelID, infotext)
+		return
+	}
+
+	if strings.HasPrefix(msgContent, "/aoc") {
+		_, after, ok := strings.Cut(msgContent, " ")
+		if ok {
+			if intVar, err := strconv.ParseInt(after, 10, 32); err == nil && intVar > 2015 && intVar <= int64(time.Now().Year()) {
+				parse(session, message, int((intVar)))
+			} else {
+				lastYearLeaderboard(session, message)
+			}
 		} else {
-			parse(session, message, time.Now().Year())
+			lastYearLeaderboard(session, message)
 		}
+	}
+}
+
+func lastYearLeaderboard(session *discordgo.Session, message *discordgo.MessageCreate) {
+	if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
+		parse(session, message, time.Now().Year()-1)
+	} else {
+		parse(session, message, time.Now().Year())
 	}
 }
 
 // gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
 func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
-	if !lastMessageSentTime.Add(1 * time.Minute).Before(time.Now()) {
+	if !lastMessageSentTime.Add(2 * time.Minute).Before(time.Now()) {
 		return
 	}
 
