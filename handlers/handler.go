@@ -1,14 +1,10 @@
 package handlers
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/niklasstich/AOCBot/resources"
@@ -19,197 +15,158 @@ import (
 )
 
 type imageCacheEntry struct {
-	pngPath string
-	created time.Time
+	pngPath   string
+	createdAt time.Time
 }
+
+const commandCD = 1 * time.Minute // TODO: maybe cooldown should be based on action (e.g. image more cd than invalid command)
+const cacheDuration = 15 * time.Minute
 
 var (
-	imageCache          map[int]imageCacheEntry
-	lastMessageSentTime time.Time
+	imageCache              = map[int]imageCacheEntry{}
+	userIDToLastCommandTime = map[string]time.Time{}
 )
 
-func init() {
-	imageCache = map[int]imageCacheEntry{}
-}
-
-const dayStarFormat = "%3v"
-
-func CommandHandler(session *discordgo.Session, message *discordgo.MessageCreate) {
-	if !lastMessageSentTime.Add(2 * time.Minute).Before(time.Now()) {
-		return
-	}
-	msgContent := strings.TrimSpace(message.Content)
-
-	if strings.HasPrefix(msgContent, "/aoc-info") {
-		infotext := "Advent Of Code: https://adventofcode.com/2022/about \n" +
-			"Join our leaderboard from https://adventofcode.com/2022/leaderboard/private with this join code: `784176-b767a0f2`.\n" +
-			"Use `/aoc <year>` command to see the current leaderboard."
-		session.ChannelMessageSend(message.ChannelID, infotext)
-		lastMessageSentTime = time.Now()
+func CommandHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Ignore messages from 🎄useless🎁#0123
+	if m.Author.ID == "1022907705297469461" {
 		return
 	}
 
-	if strings.HasPrefix(msgContent, "/aoc") {
-		_, after, ok := strings.Cut(msgContent, " ")
-		if ok {
-			if intVar, err := strconv.ParseInt(after, 10, 32); err == nil && intVar >= 2015 && intVar <= int64(time.Now().Year()) {
-				parse(session, message, int((intVar)))
-			} else {
-				lastYearLeaderboard(session, message)
-			}
-		} else {
-			lastYearLeaderboard(session, message)
-		}
-	}
-}
+	msg := strings.TrimSpace(m.Content)
 
-func lastYearLeaderboard(session *discordgo.Session, message *discordgo.MessageCreate) {
-	if time.Now().Month() < 12 { //if it's not yet december, just take last years leaderboard
-		parse(session, message, time.Now().Year()-1)
+	// Ignore own messages and those that don't start with "/aoc"
+	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(msg, "/aoc") {
+		return
+	}
+
+	// User based cooldown
+	if time.Since(userIDToLastCommandTime[m.Author.ID]) < commandCD {
+		return // Too early
 	} else {
-		parse(session, message, time.Now().Year())
+		userIDToLastCommandTime[m.Author.ID] = time.Now()
+	}
+
+	if msg == "/aoc-info" {
+		replyWithInfo(s, m.ChannelID)
+		return
+	}
+
+	msgParts := strings.Split(msg, " ")
+	if len(msgParts) == 1 && msgParts[0] == "/aoc" {
+		// No year -> use year from the last event
+		handleLeaderboardCommand(s, m.ChannelID, aoc.LastYearAvailable())
+	} else if len(msgParts) == 2 && msgParts[0] == "/aoc" {
+		year, err := strconv.Atoi(msgParts[1])
+		if err != nil || year < aoc.FirstYear || year > time.Now().Year() {
+			replyWithInvalidYear(s, m.ChannelID)
+		} else {
+			handleLeaderboardCommand(s, m.ChannelID, year)
+		}
+	} else {
+		// Doesn't fit /aoc-info or /aoc <year> format
+		replyWithUnrecognizedCommand(s, m.ChannelID)
 	}
 }
 
-// gets top 200 (or if otherwise specified) members and sends a message highlighting their progress
-func parse(session *discordgo.Session, message *discordgo.MessageCreate, year int) {
-
-
-	lastMessageSentTime = time.Now()
-	d, _ := time.ParseDuration("15m")
-
+func handleLeaderboardCommand(s *discordgo.Session, channelID string, year int) {
 	cacheEntry, ok := imageCache[year]
-	if ok && time.Since(cacheEntry.created) < d {
-		sendPng(cacheEntry.pngPath, session, message, cacheEntry)
+	if ok && time.Since(cacheEntry.createdAt) < cacheDuration {
+		replyWithLeaderboardImage(s, channelID, cacheEntry)
 		return
 	}
-	config, _ := resources.Config()
 
-	var err error
-	//get leaderboard
+	currentTimeString := time.Now().Format("2006-01-02_15-04-05")
+	config, err := resources.Config()
+	if err != nil {
+		replyWithError(s, channelID, err)
+		return
+	}
+
 	leaderboard, err := aoc.FetchLeaderboard(config, year)
 	if err != nil {
-		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		replyWithError(s, channelID, err)
 		return
 	}
 
 	sortedMembers, err := aoc.Top(leaderboard, 50)
-
 	if err != nil {
-		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		replyWithError(s, channelID, err)
 		return
 	}
 
-	currentTime := time.Now().Format("2006-01-02_15-04-05")
-	svgPath := fmt.Sprintf("/out/%s.svg", currentTime)
-	pngPath := fmt.Sprintf("/out/%s.png", currentTime)
-
+	svgPath := fmt.Sprintf("/out/%s.svg", currentTimeString)
 	err = svg.GenerateSvg(year, sortedMembers, svgPath)
 	if err != nil {
-		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		replyWithError(s, channelID, err)
 		return
 	}
 
-	err = ConvertSvgToPng(svgPath, pngPath)
+	pngPath := fmt.Sprintf("/out/%s.png", currentTimeString)
+	err = svg.ConvertSvgToPng(svgPath, pngPath)
 	if err != nil {
-		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
+		replyWithError(s, channelID, err)
 		return
 	}
 
+	// Save in cache
 	cacheEntry = imageCacheEntry{
-		pngPath: pngPath,
-		created: time.Now(),
+		pngPath:   pngPath,
+		createdAt: time.Now(),
 	}
 	imageCache[year] = cacheEntry
 
-	if err != nil {
-		_, _ = session.ChannelMessageSend(message.ChannelID, "❌"+err.Error())
-	} else {
-		sendPng(pngPath, session, message, cacheEntry)
-	}
+	replyWithLeaderboardImage(s, channelID, cacheEntry)
 }
 
-func sendPng(pngPath string, session *discordgo.Session, message *discordgo.MessageCreate, entry imageCacheEntry) {
-	png, err := os.Open(pngPath)
+func replyWithInfo(s *discordgo.Session, channelID string) {
+	s.ChannelMessageSend(
+		channelID,
+		"WTF is this? https://adventofcode.com/about\n\n"+
+			"Join our leaderboard at https://adventofcode.com/leaderboard/private with the code: `784176-b767a0f2`\n"+
+			"Type `/aoc <year>` (e.g. `/aoc 2022`) to see the standings",
+	)
+}
+
+func replyWithInvalidYear(s *discordgo.Session, channelID string) {
+	s.ChannelMessageSend(
+		channelID,
+		fmt.Sprintf("`/aoc <year>` needs a valid year in the range [%d..%d]", aoc.FirstYear, time.Now().Year()),
+	)
+}
+
+func replyWithUnrecognizedCommand(s *discordgo.Session, channelID string) {
+	s.ChannelMessageSend(
+		channelID,
+		"Unrecognized command. Try `/aoc-info` or `/aoc <year>` (e.g. `/aoc 2022`)",
+	)
+}
+
+func replyWithError(s *discordgo.Session, channelID string, err error) {
+	s.ChannelMessageSend(
+		channelID,
+		fmt.Sprintf("❌ %s", err.Error()),
+	)
+}
+
+func replyWithLeaderboardImage(s *discordgo.Session, channelID string, imageEntry imageCacheEntry) {
+	png, err := os.Open(imageEntry.pngPath)
 	if err != nil {
-		panic(err)
+		replyWithError(s, channelID, err)
+		return
 	}
-	_, _ = session.ChannelMessageSendComplex(message.ChannelID, &discordgo.MessageSend{
+
+	s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Files: []*discordgo.File{
 			{
 				Name:   "leaderboard.png",
 				Reader: png,
 			},
 		},
-		Content: fmt.Sprintf("Leaderboard last updated: <t:%d> Next update: <t:%d:R>",
-			entry.created.Unix(),
-			entry.created.Add(15*time.Minute).Unix()),
+		Content: fmt.Sprintf(
+			"Updated <t:%d:R> - Next update <t:%d:R>",
+			imageEntry.createdAt.Unix(),
+			imageEntry.createdAt.Add(cacheDuration).Unix(),
+		),
 	})
-}
-
-func ConvertSvgToPng(svg string, png string) (err error) {
-	command := exec.Command("inkscape",
-		"--export-type=png",
-		fmt.Sprintf("--export-filename=%s", png),
-		"--export-dpi=200",
-		fmt.Sprintf("%s", svg))
-	err = command.Run()
-	return
-}
-
-func formatDays(startDay int, endDay int) string {
-	var out string
-	for i := startDay; i <= endDay; i++ {
-		if i == startDay {
-			out += fmt.Sprintf("%2v", strconv.Itoa(i))
-		} else {
-			out += fmt.Sprintf(dayStarFormat, strconv.Itoa(i))
-		}
-	}
-	return out
-}
-
-func formatMemberStars(mem aoc.Member, startDay int, endDay int) string {
-	var out string
-	for i := startDay; i <= endDay; i++ {
-		dayKey := strconv.Itoa(i)
-		if day, dayOk := mem.CompletionDayLevel[dayKey]; dayOk {
-			switch len(day) {
-			case 2:
-				out += "[*]"
-			case 1:
-				out += "(*)"
-			default: //len is either 0 or greater than 2, both of which make no sense, therefore space
-				out += "   "
-			}
-		} else { //if !dayOk, then there was no entry for the day in the map, we assume no stars were gotten
-			out += "   "
-		}
-	}
-	return out
-}
-
-func formatLeaderboard(members *[]aoc.Member, w io.Writer) {
-	const padding = 3
-	tw := tabwriter.NewWriter(w, 0, 0, padding, ' ', 0)
-	dayRanges := [][]int{{1, 14}, {15, 25}}
-	for _, days := range dayRanges {
-		startDay, endDay := days[0], days[1]
-		fmt.Fprintln(tw, "\t\t"+formatDays(startDay, endDay)+"\t") // header
-		for _, mem := range *members {
-			score := strconv.Itoa(mem.LocalScore)
-			fmt.Fprintln(tw, mem.Name+"\t#"+score+"\t"+formatMemberStars(mem, startDay, endDay)+"\t")
-		}
-	}
-	tw.Flush()
-}
-
-// format a list of members as string
-func format(members []aoc.Member, year int, guildName string) string {
-	strYear := strconv.Itoa(year)
-	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintf("%s Leaderboard (Year %s)\n```css\n", guildName, strYear))
-	formatLeaderboard(&members, &buffer)
-	buffer.WriteString("```")
-	return buffer.String()
 }

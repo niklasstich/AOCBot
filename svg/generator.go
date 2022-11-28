@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -54,6 +55,16 @@ func GenerateSvg(year int, members []aoc.Member, filepath string) (err error) {
 	return
 }
 
+func ConvertSvgToPng(svg string, png string) (err error) {
+	command := exec.Command("inkscape",
+		"--export-type=png",
+		fmt.Sprintf("--export-filename=%s", png),
+		"--export-dpi=200",
+		fmt.Sprintf("%s", svg))
+	err = command.Run()
+	return
+}
+
 func PrintMembers(canvas *svg.SVG, members []aoc.Member) {
 	i := 0
 	for _, member := range members {
@@ -90,7 +101,7 @@ Add random year markup to the image
 Just like on the real leaderboard
 */
 func AddRandomYearMarkup(year int) {
-	//If we don't add random seed after a certain amount of request 
+	//If we don't add random seed after a certain amount of request
 	//the random numbers will be the same
 	rand.Seed(time.Now().UnixNano())
 	min := 0
