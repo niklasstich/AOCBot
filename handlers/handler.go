@@ -28,9 +28,12 @@ var (
 )
 
 func CommandHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// Ignore messages from 🎄useless🎁#0123
-	if m.Author.ID == "1022907705297469461" {
-		return
+	// Ignore messages from useless and his alts
+	ignoredUserIDs := []string{"1179046965804269588", "1022907705297469461"}
+	for _, userID := range ignoredUserIDs {
+		if m.Author.ID == userID {
+			return
+		}
 	}
 
 	msg := strings.TrimSpace(m.Content)
