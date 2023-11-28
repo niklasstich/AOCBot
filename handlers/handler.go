@@ -126,8 +126,8 @@ func replyWithInfo(s *discordgo.Session, channelID string) {
 	s.ChannelMessageSend(
 		channelID,
 		"WTF is this? https://adventofcode.com/about\n\n"+
-			"Join our leaderboard at https://adventofcode.com/leaderboard/private with the code: `784176-b767a0f2`\n"+
-			"Type `/aoc <year>` (e.g. `/aoc 2022`) to see the standings",
+			"Join our leaderboard at https://adventofcode.com/leaderboard/private with the code: `1391093-61dfe65f`\n"+
+			"Type `/aoc <year>` (e.g. `/aoc 2023`) to see the standings",
 	)
 }
 
