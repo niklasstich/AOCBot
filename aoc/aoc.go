@@ -20,6 +20,42 @@ type Leaderboard struct {
 	Members map[string]Member `json:"members"`
 }
 
+type NextPuzzle struct {
+	Day      int
+	UnlockAt time.Time
+}
+
+// EST timezone (UTC-5)
+var estLocation = time.FixedZone("EST", -5*60*60)
+
+// From 2025 onwards, there are only 12 days of puzzles.
+func DaysForYear(year int) int {
+	if year >= 2025 {
+		return 12
+	}
+	return 25
+}
+
+// Puzzles unlock at midnight EST (UTC-5) each day from Dec 1.
+func NextPuzzleUnlock(year int) *NextPuzzle {
+	now := time.Now()
+	maxDays := DaysForYear(year)
+
+	for day := 1; day <= maxDays; day++ {
+		unlockTime := time.Date(year, time.December, day, 0, 0, 0, 0, estLocation)
+
+		if unlockTime.After(now) {
+			return &NextPuzzle{
+				Day:      day,
+				UnlockAt: unlockTime,
+			}
+		}
+	}
+
+	// No puzzles left to unlock
+	return nil
+}
+
 type Member struct {
 	Name               string                            `json:"name"`
 	LocalScore         int                               `json:"local_score"`

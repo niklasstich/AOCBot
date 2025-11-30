@@ -98,8 +98,10 @@ func handleLeaderboardCommand(s *discordgo.Session, channelID string, year int) 
 		return
 	}
 
+	nextPuzzle := aoc.NextPuzzleUnlock(year)
+
 	svgPath := fmt.Sprintf("/out/%s.svg", currentTimeString)
-	err = svg.GenerateSvg(year, sortedMembers, svgPath)
+	err = svg.GenerateSvg(year, sortedMembers, nextPuzzle, svgPath)
 	if err != nil {
 		replyWithError(s, channelID, err)
 		return
@@ -123,10 +125,17 @@ func handleLeaderboardCommand(s *discordgo.Session, channelID string, year int) 
 }
 
 func replyWithInfo(s *discordgo.Session, channelID string) {
+
+	config, err := resources.Config()
+	if err != nil {
+		replyWithError(s, channelID, err)
+		return
+	}
+
 	s.ChannelMessageSend(
 		channelID,
 		"WTF is this? https://adventofcode.com/about\n\n"+
-			"Join our leaderboard at https://adventofcode.com/leaderboard/private with the code: `1391093-61dfe65f`\n"+
+			"Join our leaderboard at https://adventofcode.com/leaderboard/private with the code: `"+config.InviteCode+"`\n"+
 			"Type `/aoc <year>` (e.g. `/aoc 2023`) to see the standings",
 	)
 }
